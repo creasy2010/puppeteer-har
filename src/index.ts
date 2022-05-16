@@ -2,6 +2,7 @@ import { harFromMessages } from 'chrome-har';
 import * as fs from  'fs';
 import  { promisify } from 'util';
 import {CDPSession, Frame, Page} from "puppeteer";
+import { getReponseId } from './request-util';
 
 // event types to observe
 const page_observe:string[] = [
@@ -124,20 +125,10 @@ export default class PuppeteerHar {
     });
 
     let responseMap:{
-      [requestId:string]:{
-        response:{
-          requestId?:string;
-          status?:number;
-          headers?:any;
-          mimeType?:string;
-          body?:string;
-          url?:string;
-          [key:string]:any;
-        };
-
-        [key:string]:any;
-      };
+      [requestId:string]:IResponseInfo;
     } = {};
+    //内容与结果值缓存;
+    let urlGetCheck=[];
 
     network_observe.forEach((method) => {
       this.client.on(method, (params) => {
@@ -169,6 +160,18 @@ export default class PuppeteerHar {
                 responseBody.body,
                 responseBody.base64Encoded ? 'base64' : undefined
               ).toString();
+
+              let responseId =   getReponseId(responseParams);
+              if(urlGetCheck[responseId] ){
+                if(urlGetCheck[responseId] !=responseParams.response.body ){
+                  debugger;
+                  console.warn(`${new Date().toLocaleTimeString()}::多次获取content内容不一致 :requestId:${requestId},url:${responseParams.response.url}`);
+                }else{
+                  responseParams.response.body=undefined;
+                }
+              }else{
+                urlGetCheck[responseId] = responseParams.response.body;
+              }
               sucess();
             },
             (reason) => {
@@ -261,3 +264,22 @@ export default class PuppeteerHar {
   }
 }
 
+
+export interface IResponseInfo{
+  type?:"Document"|"Script"|"Stylesheet"|"Image"|"Media"|"Font"|"Other";
+  loaderId?:string;
+  timestamp?:number;
+  hasExtraInfo?:boolean;
+  frameId?:string;
+  response:{
+    requestId?:string;
+    status?:number;
+    headers?:any;
+    mimeType?:string;
+    body?:string;
+    url?:string;
+    [key:string]:any;
+  };
+  [key:string]:any;
+
+}
