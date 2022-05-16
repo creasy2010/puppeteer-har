@@ -1,9 +1,10 @@
-const fs = require('fs');
-const { promisify } = require('util');
-const { harFromMessages } = require('chrome-har');
+import { harFromMessages } from 'chrome-har';
+import * as fs from  'fs';
+import  { promisify } from 'util';
+import {CDPSession, Frame, Page} from "puppeteer";
 
 // event types to observe
-const page_observe = [
+const page_observe:string[] = [
   'Page.loadEventFired',
   'Page.domContentEventFired',
   'Page.frameStartedLoading',
@@ -11,7 +12,7 @@ const page_observe = [
   'Page.frameScheduledNavigation',
 ];
 
-const network_observe = [
+const network_observe:string[] = [
   'Network.requestWillBeSent',
   'Network.requestServedFromCache',
   'Network.dataReceived',
@@ -21,7 +22,49 @@ const network_observe = [
   'Network.loadingFailed',
 ];
 
-class PuppeteerHar {
+export default class PuppeteerHar {
+
+  /**
+   * 录制流量的页面;
+   */
+  page:Page;
+  /**
+   * 录制流量页面的mainFrame;
+   */
+  mainFrame:Frame;
+  /**
+   * 是否正在录制;
+   */
+  inProgress:boolean;
+
+  //保存文件路径;
+  path:string;
+
+  /**
+   * 是否保存返回数据内容;
+   */
+  saveResponse:boolean=false;
+  /**
+   * 记录所有devtool协议的内容;
+   */
+  network_events:any[];
+
+  page_events:any[];
+  /**
+   * 等待查询
+   */
+  response_body_promises:any[]=[];
+
+  /**
+   * 捕获的资源类型;
+   */
+  captureMimeTypes:string[]=[];
+
+  /**
+   * CDP 客户端;
+   */
+  client:CDPSession;
+
   /**
    * @param {object} page
    */
@@ -33,6 +76,7 @@ class PuppeteerHar {
   }
 
   /**
+   * 重置清空;
    * @returns {void}
    */
   cleanUp() {
@@ -41,6 +85,9 @@ class PuppeteerHar {
     this.response_body_promises = [];
   }
 
+  /**
+   * 捕获统计数据
+   */
   staticData = {
     allCount: 0,
     sucessCount: 0,
@@ -51,7 +98,12 @@ class PuppeteerHar {
    * @param {{path: string}=} options
    * @return {Promise<void>}
    */
-  async start({ path, saveResponse, captureMimeTypes } = {}) {
+  async start(param:{
+    path:string;
+    saveResponse?:boolean;
+    captureMimeTypes:string[]
+  }) {
+    let { path, saveResponse, captureMimeTypes } =param;
     this.inProgress = true;
     this.saveResponse = saveResponse || false;
     this.captureMimeTypes = captureMimeTypes || [
@@ -71,7 +123,21 @@ class PuppeteerHar {
       });
     });
 
-    let responseMap = {};
+    let responseMap:{
+      [requestId:string]:{
+        response:{
+          requestId?:string;
+          status?:number;
+          headers?:any;
+          mimeType?:string;
+          body?:string;
+          url?:string;
+          [key:string]:any;
+        };
+
+        [key:string]:any;
+      };
+    } = {};
 
     network_observe.forEach((method) => {
       this.client.on(method, (params) => {
@@ -98,6 +164,7 @@ class PuppeteerHar {
                   responseParams.response && responseParams.response.url
                 );
               }
+              //@ts-ignore;
               responseParams.response.body = new Buffer.from(
                 responseBody.body,
                 responseBody.base64Encoded ? 'base64' : undefined
@@ -194,4 +261,3 @@ class PuppeteerHar {
   }
 }
 
-module.exports = PuppeteerHar;
