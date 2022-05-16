@@ -128,7 +128,7 @@ export default class PuppeteerHar {
       [requestId:string]:IResponseInfo;
     } = {};
     //内容与结果值缓存;
-    let urlGetCheck=[];
+    let urlGetCheck={};
 
     network_observe.forEach((method) => {
       this.client.on(method, (params) => {
@@ -140,9 +140,15 @@ export default class PuppeteerHar {
         let tryCount = 3;
 
         let getResponse = (sucess) => {
+          let responseParams = responseMap[requestId];
+          let responseId =   getReponseId(responseParams);
+          if(urlGetCheck[responseId]){
+            sucess();
+            return ;
+          }
+
           this.client.send('Network.getResponseBody', { requestId }).then(
             (responseBody) => {
-              let responseParams = responseMap[requestId];
               this.staticData.sucessCount++;
               // console.log('获取content路径:',params.response && params.response.url);
               // Set the response so `chrome-har` can add it to the HAR
@@ -161,11 +167,11 @@ export default class PuppeteerHar {
                 responseBody.base64Encoded ? 'base64' : undefined
               ).toString();
 
-              let responseId =   getReponseId(responseParams);
               if(urlGetCheck[responseId] ){
                 if(urlGetCheck[responseId] !=responseParams.response.body ){
                   debugger;
                   console.warn(`${new Date().toLocaleTimeString()}::多次获取content内容不一致 :requestId:${requestId},url:${responseParams.response.url}`);
+                  urlGetCheck[responseId] =responseParams.response.body
                 }else{
                   responseParams.response.body=undefined;
                 }
@@ -184,7 +190,7 @@ export default class PuppeteerHar {
                 );
                 setTimeout(() => {
                   getResponse(sucess);
-                }, 500);
+                }, 2000);
               } else {
                 this.staticData.failCount++;
                 console.error(
@@ -203,7 +209,9 @@ export default class PuppeteerHar {
         if (this.saveResponse && method == 'Network.responseReceived') {
           const { requestId } = params;
           responseMap[requestId] = params;
-          getResponse(() => {});
+          setTimeout(() => {
+            getResponse(() => {});
+          }, 2000);
         }
         // if(method==='Network.dataReceived'){
         //     console.log( 'Network.dataReceived',params.requestId);
@@ -266,7 +274,7 @@ export default class PuppeteerHar {
 
 
 export interface IResponseInfo{
-  type?:"Document"|"Script"|"Stylesheet"|"Image"|"Media"|"Font"|"Other";
+  type?:"Document"|"Script"|"Stylesheet"|"Image"|"Media"|"Font"|"Other"|"XHR";
   loaderId?:string;
   timestamp?:number;
   hasExtraInfo?:boolean;

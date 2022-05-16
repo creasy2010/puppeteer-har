@@ -11,8 +11,10 @@ import {IResponseInfo} from "./index";
 
 export function getReponseId(response:IResponseInfo){
 
-  if(['Document','Stylesheet','Image','Media','Font'].includes(response.typ)){
+  if(['Document','Stylesheet','Image','Media','Font'].includes(response.type)){
     return response.response.url;
+  }else if(response.type==='XHR'){
+    return response.response.url+'-'+response.response.requestId;
   }else{
     return response.response.url;
   }
