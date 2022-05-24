@@ -164,12 +164,11 @@ export default class PuppeteerHar {
               //@ts-ignore;
               responseParams.response.body = new Buffer.from(
                 responseBody.body,
-                responseBody.base64Encoded ? 'base64' : undefined
+                responseBody.base64Encoded ? 'base64' : 'utf8'
               ).toString();
 
               if(urlGetCheck[responseId] ){
                 if(urlGetCheck[responseId] !=responseParams.response.body ){
-                  debugger;
                   console.warn(`${new Date().toLocaleTimeString()}::多次获取content内容不一致 :requestId:${requestId},url:${responseParams.response.url}`);
                   urlGetCheck[responseId] =responseParams.response.body
                 }else{
