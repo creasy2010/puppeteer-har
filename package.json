@@ -1,10 +1,10 @@
 {
   "name": "puppeteer-har-test",
-  "version": "1.1.2",
+  "version": "1.1.2-beta.2",
   "description": "Generate HAR file with Puppeteer",
   "main": "build/index.js",
   "scripts": {
-    "prepublish": "tsc",
+    "prepublish": "tsc"
   },
   "directories": {
     "lib": "lib"
@@ -21,7 +21,7 @@
   "author": "Michał Janaszek",
   "license": "MIT",
   "dependencies": {
-    "chrome-har": "^0.11.3"
+    "chrome-har-test": "^0.13.0-beta.1"
   },
   "peerDependencies": {
     "puppeteer": ">=1.0.0"

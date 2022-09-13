@@ -1,4 +1,4 @@
-import { harFromMessages } from 'chrome-har';
+import { harFromMessages } from 'chrome-har-test';
 import * as fs from  'fs';
 import  { promisify } from 'util';
 import {CDPSession, Frame, Page} from "puppeteer";
@@ -102,7 +102,8 @@ export default class PuppeteerHar {
   async start(param:{
     path:string;
     saveResponse?:boolean;
-    captureMimeTypes:string[]
+    captureMimeTypes:string[];
+    getPageStateData:(url:string)=>Promise<{[key:string]:any}>
   }) {
     let { path, saveResponse, captureMimeTypes } =param;
     this.inProgress = true;
@@ -135,17 +136,35 @@ export default class PuppeteerHar {
         if (!this.inProgress) {
           return;
         }
-        const { requestId } = params;
+
+        const { requestId,request} = params;
         this.network_events.push({ method, params });
         let tryCount = 3;
 
         let getResponse = (sucess) => {
           let responseParams = responseMap[requestId];
           let responseId =   getReponseId(responseParams);
-          if(urlGetCheck[responseId]){
+          if(urlGetCheck[responseId]) {
             sucess();
             return ;
           }
+          // TODO dong 2022/9/9 添加起来;
+          // if(responseParams.response.mimeType===){
+          //   console.log("request.url::",responseParams.response.url);
+          //   param.getPageStateData(responseParams.response.url).then(applicationData => {
+          //     console.log('applicationData',applicationData);
+          //     responseMap[requestId].response.applicationData = applicationData;
+          //   });
+          // }
+          if(responseParams.type==='Document'){
+            // console.log("request.url::",responseParams.response.url);
+            param.getPageStateData(responseParams.response.url).then(applicationData => {
+              console.log('applicationData',responseParams.response.url,applicationData);
+              responseMap[requestId].response.applicationData = applicationData;
+            });
+          }
+
+
 
           this.client.send('Network.getResponseBody', { requestId }).then(
             (responseBody) => {
