@@ -141,11 +141,14 @@ export default class PuppeteerHar {
         this.network_events.push({ method, params });
         let tryCount = 3;
 
-        let getResponse = (sucess) => {
+        let getResponse = (done) => {
           let responseParams = responseMap[requestId];
+          if(responseParams) {
+            return done();
+          }
           let responseId =   getReponseId(responseParams);
-          if(urlGetCheck[responseId]) {
-            sucess();
+          if(responseId && urlGetCheck[responseId]) {
+            done();
             return ;
           }
           // TODO dong 2022/9/9 添加起来;
@@ -156,7 +159,7 @@ export default class PuppeteerHar {
           //     responseMap[requestId].response.applicationData = applicationData;
           //   });
           // }
-          if(responseParams.type==='Document'){
+          if(responseParams?.type==='Document'){
             // console.log("request.url::",responseParams.response.url);
             param.getPageStateData(responseParams.response.url).then(applicationData => {
               console.log('applicationData',responseParams.response.url,applicationData);
@@ -196,18 +199,18 @@ export default class PuppeteerHar {
               }else{
                 urlGetCheck[responseId] = responseParams.response.body;
               }
-              sucess();
+              done();
             },
             (reason) => {
               let responseParams = responseMap[requestId];
-              sucess();
+              done();
               if (tryCount-- > 0) {
                 console.log(
                   `${new Date().toLocaleTimeString()}::获取content失败,重试[${tryCount}]:`,
                   responseParams.response && responseParams.response.url
                 );
                 setTimeout(() => {
-                  getResponse(sucess);
+                  getResponse(done);
                 }, 2000);
               } else {
                 this.staticData.failCount++;
@@ -238,9 +241,9 @@ export default class PuppeteerHar {
         if (this.saveResponse && method == 'Network.loadingFinished') {
           //Network.dataReceived
           this.staticData.allCount++;
-          let responseParams = responseMap[params.requestId];
-          const response = responseParams.response;
-          const requestId = responseParams.requestId;
+          // let responseParams = responseMap[params.requestId];
+          // const response = responseParams.response;
+          // const requestId = responseParams.requestId;
 
           // console.log(`${new Date().toLocaleTimeString()}::Network.responseReceived`, requestId,responseParams.response && responseParams.response.url);
 
@@ -253,7 +256,9 @@ export default class PuppeteerHar {
             // this.captureMimeTypes.includes(response.mimeType)
           ) {
             const promise = new Promise((resolve) => {
-              getResponse(resolve);
+              setTimeout(()=>{
+                getResponse(resolve)
+              },2000);
             });
             this.response_body_promises.push(promise);
           }
